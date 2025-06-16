@@ -17,6 +17,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @Component("redis-stream")
 @ApplicationScoped
 public class RedisStreamComponent extends DefaultComponent {
+    
+    static {
+        Log.info("RedisStreamComponent class loaded successfully");
+    }
+    
+    public RedisStreamComponent() {
+        Log.info("RedisStreamComponent instance created");
+    }
 
     @ConfigProperty(name = "quarkus.redis.hosts", defaultValue = "redis://localhost:6379")
     String redisHosts;
@@ -43,6 +51,8 @@ public class RedisStreamComponent extends DefaultComponent {
 
     @Override
     protected Endpoint createEndpoint(String uri, String remaining, Map<String, Object> parameters) throws Exception {
+        Log.infof("Creating Redis Stream endpoint for URI: %s, remaining: %s, parameters: %s", uri, remaining, parameters);
+        
         RedisStreamConfiguration configuration = new RedisStreamConfiguration();
         configuration.setStreamKeyName(remaining);
         
@@ -60,8 +70,9 @@ public class RedisStreamComponent extends DefaultComponent {
         validateConfiguration(configuration);
         
         RedisStreamEndpoint endpoint = new RedisStreamEndpoint(uri, this, configuration);
-        endpoint.setConnection(getConnection());
+        // Don't eagerly create connection - let it be lazy
         
+        Log.infof("Successfully created Redis Stream endpoint for stream: %s", remaining);
         return endpoint;
     }
 
@@ -69,12 +80,8 @@ public class RedisStreamComponent extends DefaultComponent {
         if (configuration.getStreamKeyName() == null || configuration.getStreamKeyName().trim().isEmpty()) {
             throw new IllegalArgumentException("Stream key name is required");
         }
-        if (configuration.getGroup() == null || configuration.getGroup().trim().isEmpty()) {
-            throw new IllegalArgumentException("Consumer group is required");
-        }
-        if (configuration.getEvents() == null || configuration.getEvents().trim().isEmpty()) {
-            throw new IllegalArgumentException("Events parameter is required");
-        }
+        // Group and events are only required for consumers, not producers
+        // Validation will be done at consumer creation time
     }
 
     public StatefulRedisConnection<String, String> getConnection() {

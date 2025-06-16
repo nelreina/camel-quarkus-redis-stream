@@ -38,9 +38,21 @@ public class RedisStreamEndpoint extends ScheduledPollEndpoint {
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
+        // Validate consumer-specific requirements
+        validateConsumerConfiguration();
+        
         RedisStreamConsumer consumer = new RedisStreamConsumer(this, processor);
         configureConsumer(consumer);
         return consumer;
+    }
+    
+    private void validateConsumerConfiguration() {
+        if (configuration.getGroup() == null || configuration.getGroup().trim().isEmpty()) {
+            throw new IllegalArgumentException("Consumer group is required for consumer endpoints. Use: redis-stream://stream?group=mygroup&events=Event1,Event2");
+        }
+        if (configuration.getEvents() == null || configuration.getEvents().trim().isEmpty()) {
+            throw new IllegalArgumentException("Events parameter is required for consumer endpoints. Use: redis-stream://stream?group=mygroup&events=Event1,Event2");
+        }
     }
 
     @Override
