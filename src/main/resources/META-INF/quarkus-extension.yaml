@@ -1,0 +1,15 @@
+name: Camel Quarkus Redis Stream
+description: Apache Camel Redis Stream component for Quarkus
+metadata:
+  keywords:
+    - camel
+    - redis
+    - stream
+    - messaging
+    - event-driven
+  categories:
+    - messaging
+    - integration
+  guide: https://github.com/nelreina/camel-quarkus-redis-stream
+  config:
+    - tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamComponent
