@@ -11,9 +11,11 @@ import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.quarkus.logging.Log;
 import jakarta.inject.Inject;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Component("redis-stream")
+@ApplicationScoped
 public class RedisStreamComponent extends DefaultComponent {
 
     @ConfigProperty(name = "quarkus.redis.hosts", defaultValue = "redis://localhost:6379")
