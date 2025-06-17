@@ -10,12 +10,8 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.quarkus.logging.Log;
-import jakarta.inject.Inject;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Component("redis-stream")
-@ApplicationScoped
 public class RedisStreamComponent extends DefaultComponent {
     
     static {
@@ -26,26 +22,13 @@ public class RedisStreamComponent extends DefaultComponent {
         Log.info("RedisStreamComponent instance created");
     }
 
-    @ConfigProperty(name = "quarkus.redis.hosts", defaultValue = "redis://localhost:6379")
-    String redisHosts;
-
-    @ConfigProperty(name = "quarkus.redis.password", defaultValue = "")
-    String redisPassword;
-
-    @ConfigProperty(name = "camel.component.redis-stream.consumer-group-prefix", defaultValue = "camel")
-    String consumerGroupPrefix;
-
-    @ConfigProperty(name = "camel.component.redis-stream.auto-create-groups", defaultValue = "true")
-    boolean autoCreateGroups;
-
-    @ConfigProperty(name = "camel.component.redis-stream.default-block-timeout", defaultValue = "5000")
-    int defaultBlockTimeout;
-
-    @ConfigProperty(name = "camel.component.redis-stream.max-messages", defaultValue = "10")
-    int maxMessages;
-
-    @ConfigProperty(name = "camel.component.redis-stream.auto-ack", defaultValue = "true")
-    boolean autoAck;
+    private String redisHosts = "redis://localhost:6379";
+    private String redisPassword = "";
+    private String consumerGroupPrefix = "camel";
+    private boolean autoCreateGroups = true;
+    private int defaultBlockTimeout = 5000;
+    private int maxMessages = 10;
+    private boolean autoAck = true;
 
     private StatefulRedisConnection<String, String> connection;
 
@@ -167,5 +150,21 @@ public class RedisStreamComponent extends DefaultComponent {
 
     public void setAutoAck(boolean autoAck) {
         this.autoAck = autoAck;
+    }
+
+    public String getRedisHosts() {
+        return redisHosts;
+    }
+
+    public void setRedisHosts(String redisHosts) {
+        this.redisHosts = redisHosts;
+    }
+
+    public String getRedisPassword() {
+        return redisPassword;
+    }
+
+    public void setRedisPassword(String redisPassword) {
+        this.redisPassword = redisPassword;
     }
 }
