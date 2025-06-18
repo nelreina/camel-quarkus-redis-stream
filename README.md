@@ -1,6 +1,6 @@
 # Camel Quarkus Redis Stream Component
 
-[![Maven Central](https://img.shields.io/maven-central/v/tech.nelreina/camel-quarkus-redis-stream.svg)](https://search.maven.org/artifact/tech.nelreina/camel-quarkus-redis-stream)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.0.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Apache Camel component for Quarkus that provides Redis Stream integration capabilities for event-driven microservice architectures.
@@ -22,15 +22,43 @@ This component enables seamless Redis Stream consumption and production through 
 
 ## Installation
 
-Add the dependency to your `pom.xml`:
+### 1. Add GitHub Packages Repository
+Add to your `pom.xml`:
 
+```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/nelreina/camel-quarkus-redis-stream</url>
+    </repository>
+</repositories>
+```
+
+### 2. Add Dependency
 ```xml
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
+
+### 3. Configure Authentication
+Add to your `~/.m2/settings.xml`:
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github</id>
+            <username>YOUR_GITHUB_USERNAME</username>
+            <password>YOUR_GITHUB_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+**Note**: You need a GitHub Personal Access Token with `read:packages` scope. See [docs/GITHUB_PACKAGES.md](docs/GITHUB_PACKAGES.md) for details.
 
 ## Configuration
 

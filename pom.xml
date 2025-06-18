@@ -6,7 +6,7 @@
 
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>Camel Quarkus Redis Stream</name>
@@ -254,5 +254,13 @@
         <developerConnection>scm:git:ssh://github.com:nelreina/camel-quarkus-redis-stream.git</developerConnection>
         <url>http://github.com/nelreina/camel-quarkus-redis-stream/tree/main</url>
     </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub nelreina Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/nelreina/camel-quarkus-redis-stream</url>
+        </repository>
+    </distributionManagement>
 
 </project>
