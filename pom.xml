@@ -6,7 +6,7 @@
 
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>Camel Quarkus Redis Stream</name>
@@ -244,6 +244,11 @@
     <developers>
         <developer>
             <id>nelreina</id>
+            <name>Nelson Reina</name>
+            <email>contact@nelreina.tech</email>
+        </developer>
+        <developer>
+            <id>ibis-nreina</id>
             <name>Nelson Reina</name>
             <email>contact@nelreina.tech</email>
         </developer>

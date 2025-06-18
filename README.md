@@ -68,8 +68,8 @@ Configure Redis connection in `application.properties`:
 
 ```properties
 # Redis connection
-quarkus.redis.hosts=redis://localhost:6379
-quarkus.redis.password=your-password
+camel.component.redis-stream.redis-hosts=redis://localhost:6379
+camel.component.redis-stream.redis-password=<password>
 
 # Component defaults (optional)
 camel.component.redis-stream.consumer-group-prefix=myapp
