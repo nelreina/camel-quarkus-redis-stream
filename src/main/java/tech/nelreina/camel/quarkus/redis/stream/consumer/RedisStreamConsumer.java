@@ -104,9 +104,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
             return processedCount;
             
         } catch (Exception e) {
-            Log.error("Error polling Redis Stream");
             return 0;
-            // throw new RedisStreamException("Error polling Redis Stream", e);
         }
     }
 
