@@ -50,6 +50,9 @@ public class RedisStreamConfiguration {
     @UriParam(description = "Service name for produced messages")
     private String serviceName;
 
+    @UriParam(description = "Polling interval in milliseconds", defaultValue = "100")
+    private int pollingInterval = 100;
+
     public enum PayloadType {
         STRING, MAP, OBJECT
     }
@@ -164,5 +167,13 @@ public class RedisStreamConfiguration {
 
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
+    }
+
+    public int getPollingInterval() {
+        return pollingInterval;
+    }
+
+    public void setPollingInterval(int pollingInterval) {
+        this.pollingInterval = pollingInterval;
     }
 }

@@ -66,6 +66,7 @@ redis-stream://streamKeyName?group=groupName&events=event1,event2[&options]
 | `consumerName` | String | ❌ | auto-generated | Consumer name within the group |
 | `maxMessages` | int | ❌ | 10 | Maximum messages per poll |
 | `blockTimeout` | int | ❌ | 1000 | Block timeout in milliseconds |
+| `pollingInterval` | int | ❌ | 100 | Polling interval in milliseconds |
 | `autoAck` | boolean | ❌ | true | Auto-acknowledge messages |
 | `autoCreateStreams` | boolean | ❌ | true | Auto-create Redis streams if they don't exist |
 | `startId` | String | ❌ | ">" | Stream start position |

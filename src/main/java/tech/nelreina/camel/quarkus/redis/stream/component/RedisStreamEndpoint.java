@@ -60,8 +60,8 @@ public class RedisStreamEndpoint extends ScheduledPollEndpoint {
         super.configureConsumer(consumer);
         if (consumer instanceof RedisStreamConsumer) {
             RedisStreamConsumer redisConsumer = (RedisStreamConsumer) consumer;
-            // Configure polling interval (default 1 second)
-            redisConsumer.setDelay(1000);
+            // Configure polling interval from configuration
+            redisConsumer.setDelay(configuration.getPollingInterval());
             redisConsumer.setInitialDelay(0);
         }
     }

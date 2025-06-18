@@ -30,6 +30,7 @@ public class RedisStreamComponent extends DefaultComponent {
     private int defaultBlockTimeout = 1000;
     private int maxMessages = 10;
     private boolean autoAck = true;
+    private int pollingInterval = 100;
 
     private StatefulRedisConnection<String, String> connection;
 
@@ -47,6 +48,7 @@ public class RedisStreamComponent extends DefaultComponent {
         configuration.setBlockTimeout(defaultBlockTimeout);
         configuration.setMaxMessages(maxMessages);
         configuration.setAutoAck(autoAck);
+        configuration.setPollingInterval(pollingInterval);
         
         // Configure from URI parameters
         setProperties(configuration, parameters);
@@ -176,5 +178,13 @@ public class RedisStreamComponent extends DefaultComponent {
 
     public void setRedisPassword(String redisPassword) {
         this.redisPassword = redisPassword;
+    }
+
+    public int getPollingInterval() {
+        return pollingInterval;
+    }
+
+    public void setPollingInterval(int pollingInterval) {
+        this.pollingInterval = pollingInterval;
     }
 }
