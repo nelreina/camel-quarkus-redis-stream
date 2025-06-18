@@ -16,6 +16,7 @@ This component enables seamless Redis Stream consumption and production through 
 - 🎯 **Event Filtering** - Process only specific event types with comma-separated filters
 - 🔄 **Auto-Acknowledgment** - Configurable automatic message acknowledgment
 - 🏗️ **Builder Pattern** - EventData model with fluent builder API
+- 🆕 **Stream Auto-Creation** - Automatically create Redis streams if they don't exist
 - ⚡ **High Performance** - Non-blocking I/O with Lettuce Redis client
 - 🔧 **Flexible Configuration** - URI parameters and application properties support
 
@@ -27,7 +28,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -66,6 +67,7 @@ redis-stream://streamKeyName?group=groupName&events=event1,event2[&options]
 | `maxMessages` | int | ❌ | 10 | Maximum messages per poll |
 | `blockTimeout` | int | ❌ | 1000 | Block timeout in milliseconds |
 | `autoAck` | boolean | ❌ | true | Auto-acknowledge messages |
+| `autoCreateStreams` | boolean | ❌ | true | Auto-create Redis streams if they don't exist |
 | `startId` | String | ❌ | ">" | Stream start position |
 | `payloadType` | enum | ❌ | STRING | Expected payload type (STRING, MAP, OBJECT) |
 | `objectClass` | String | ❌ | - | Target class for OBJECT payload type |

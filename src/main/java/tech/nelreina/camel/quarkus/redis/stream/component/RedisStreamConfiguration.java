@@ -44,6 +44,9 @@ public class RedisStreamConfiguration {
     @UriParam(description = "Auto-create consumer groups if they don't exist", defaultValue = "true")
     private boolean autoCreateGroups = true;
 
+    @UriParam(description = "Auto-create stream keys if they don't exist", defaultValue = "true")
+    private boolean autoCreateStreams = true;
+
     @UriParam(description = "Service name for produced messages")
     private String serviceName;
 
@@ -145,6 +148,14 @@ public class RedisStreamConfiguration {
 
     public void setAutoCreateGroups(boolean autoCreateGroups) {
         this.autoCreateGroups = autoCreateGroups;
+    }
+
+    public boolean isAutoCreateStreams() {
+        return autoCreateStreams;
+    }
+
+    public void setAutoCreateStreams(boolean autoCreateStreams) {
+        this.autoCreateStreams = autoCreateStreams;
     }
 
     public String getServiceName() {

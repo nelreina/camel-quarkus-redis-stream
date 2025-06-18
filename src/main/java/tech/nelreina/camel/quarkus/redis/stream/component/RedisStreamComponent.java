@@ -26,7 +26,8 @@ public class RedisStreamComponent extends DefaultComponent {
     private String redisPassword = "";
     private String consumerGroupPrefix = "camel";
     private boolean autoCreateGroups = true;
-    private int defaultBlockTimeout = 5000;
+    private boolean autoCreateStreams = true;
+    private int defaultBlockTimeout = 1000;
     private int maxMessages = 10;
     private boolean autoAck = true;
 
@@ -42,6 +43,7 @@ public class RedisStreamComponent extends DefaultComponent {
         // Set component defaults
         configuration.setConsumerGroupPrefix(consumerGroupPrefix);
         configuration.setAutoCreateGroups(autoCreateGroups);
+        configuration.setAutoCreateStreams(autoCreateStreams);
         configuration.setBlockTimeout(defaultBlockTimeout);
         configuration.setMaxMessages(maxMessages);
         configuration.setAutoAck(autoAck);
@@ -126,6 +128,14 @@ public class RedisStreamComponent extends DefaultComponent {
 
     public void setAutoCreateGroups(boolean autoCreateGroups) {
         this.autoCreateGroups = autoCreateGroups;
+    }
+
+    public boolean isAutoCreateStreams() {
+        return autoCreateStreams;
+    }
+
+    public void setAutoCreateStreams(boolean autoCreateStreams) {
+        this.autoCreateStreams = autoCreateStreams;
     }
 
     public int getDefaultBlockTimeout() {

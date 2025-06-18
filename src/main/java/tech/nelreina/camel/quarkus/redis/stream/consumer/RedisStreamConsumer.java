@@ -127,8 +127,24 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
         try {
             // Check if stream exists
             boolean streamExists = redisCommands.exists(configuration.getStreamKeyName()) == 1;
+            
             if (!streamExists) {
-                throw new RedisStreamException("Stream key '" + configuration.getStreamKeyName() + "' does not exist");
+                if (configuration.isAutoCreateStreams()) {
+                    // Create the stream by adding a dummy message and removing it
+                    Log.infof("Stream '%s' does not exist, creating it...", configuration.getStreamKeyName());
+                    
+                    // Add a minimal dummy message to create the stream
+                    String messageId = redisCommands.xadd(configuration.getStreamKeyName(), 
+                        Map.of("_dummy", "true"));
+                    
+                    // Immediately remove the dummy message to leave stream empty
+                    redisCommands.xdel(configuration.getStreamKeyName(), messageId);
+                    
+                    Log.infof("Successfully created empty stream: %s", configuration.getStreamKeyName());
+                } else {
+                    throw new RedisStreamException("Stream key '" + configuration.getStreamKeyName() + 
+                        "' does not exist and auto-create is disabled");
+                }
             }
 
             // Create consumer group if it doesn't exist and auto-create is enabled

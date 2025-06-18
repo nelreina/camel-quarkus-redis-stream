@@ -6,7 +6,7 @@
 
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Camel Quarkus Redis Stream</name>
