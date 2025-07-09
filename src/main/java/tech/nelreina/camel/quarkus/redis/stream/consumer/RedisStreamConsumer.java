@@ -207,6 +207,12 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                 builder.timestamp(Instant.now());
             }
         }
+
+        // Add headers
+        String headers = fields.get("headers");
+        if(headers != null) {
+            builder.headers(headers);
+        }
         
         // Add all other fields as headers
         fields.entrySet().stream()
@@ -221,7 +227,8 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                "event".equals(fieldName) || 
                "payload".equals(fieldName) || 
                "serviceName".equals(fieldName) || 
-               "timestamp".equals(fieldName);
+               "timestamp".equals(fieldName) ||
+               "headers".equals(fieldName);
     }
 
     public void acknowledgeMessage(String messageId) {
