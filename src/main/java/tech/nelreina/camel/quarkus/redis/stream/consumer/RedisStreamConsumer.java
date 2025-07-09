@@ -1,6 +1,5 @@
 package tech.nelreina.camel.quarkus.redis.stream.consumer;
 
-import java.net.InetAddress;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -8,6 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.support.ScheduledPollConsumer;
@@ -33,11 +34,20 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
     private String consumerName;
     private Set<String> allowedEvents;
     private HeaderFilter headerFilter;
+    private ObjectMapper objectMapper;
 
     public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
         this.endpoint = endpoint;
         this.configuration = endpoint.getConfiguration();
+        this.objectMapper = new ObjectMapper();
+    }
+
+    public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor, ObjectMapper objectMapper) {
+        super(endpoint, processor);
+        this.endpoint = endpoint;
+        this.configuration = endpoint.getConfiguration();
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -182,9 +192,9 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
         }
     }
 
-    private EventData mapToEventData(StreamMessage<String, String> message) {
+    private EventData mapToEventData(StreamMessage<String, String> message) throws JsonProcessingException {
         Map<String, String> fields = message.getBody();
-        
+
         EventData.Builder builder = EventData.builder()
                 .keyId(message.getId())
                 .aggregateId(fields.get("aggregateId"))
@@ -209,7 +219,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
         }
 
         // Add headers
-        String headers = fields.get("headers");
+        Map<String, Object> headers = objectMapper.readValue(fields.get("headers"), Map.class);
         if(headers != null) {
             builder.headers(headers);
         }
