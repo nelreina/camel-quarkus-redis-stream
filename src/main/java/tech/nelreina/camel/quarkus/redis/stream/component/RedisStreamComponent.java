@@ -31,6 +31,7 @@ public class RedisStreamComponent extends DefaultComponent {
     private int maxMessages = 10;
     private boolean autoAck = true;
     private int pollingInterval = 100;
+    private String globalHeaderFilters = "";
 
     private StatefulRedisConnection<String, String> connection;
 
@@ -49,6 +50,9 @@ public class RedisStreamComponent extends DefaultComponent {
         configuration.setMaxMessages(maxMessages);
         configuration.setAutoAck(autoAck);
         configuration.setPollingInterval(pollingInterval);
+        
+        // Always set global header filters - they will be merged with route-level filters
+        configuration.setGlobalHeaderFilters(globalHeaderFilters);
         
         // Configure from URI parameters
         setProperties(configuration, parameters);
@@ -186,5 +190,13 @@ public class RedisStreamComponent extends DefaultComponent {
 
     public void setPollingInterval(int pollingInterval) {
         this.pollingInterval = pollingInterval;
+    }
+
+    public String getGlobalHeaderFilters() {
+        return globalHeaderFilters;
+    }
+
+    public void setGlobalHeaderFilters(String globalHeaderFilters) {
+        this.globalHeaderFilters = globalHeaderFilters;
     }
 }

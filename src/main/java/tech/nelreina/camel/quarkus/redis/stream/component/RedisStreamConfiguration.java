@@ -53,6 +53,12 @@ public class RedisStreamConfiguration {
     @UriParam(description = "Polling interval in milliseconds", defaultValue = "100")
     private int pollingInterval = 100;
 
+    @UriParam(description = "Comma-separated list of header filters in format key1=value1,key2=value2")
+    private String headerFilters;
+    
+    // Global filters from component configuration (not a URI param)
+    private String globalHeaderFilters;
+
     public enum PayloadType {
         STRING, MAP, OBJECT
     }
@@ -175,5 +181,21 @@ public class RedisStreamConfiguration {
 
     public void setPollingInterval(int pollingInterval) {
         this.pollingInterval = pollingInterval;
+    }
+
+    public String getHeaderFilters() {
+        return headerFilters;
+    }
+
+    public void setHeaderFilters(String headerFilters) {
+        this.headerFilters = headerFilters;
+    }
+
+    public String getGlobalHeaderFilters() {
+        return globalHeaderFilters;
+    }
+
+    public void setGlobalHeaderFilters(String globalHeaderFilters) {
+        this.globalHeaderFilters = globalHeaderFilters;
     }
 }

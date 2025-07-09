@@ -14,6 +14,8 @@ This component enables seamless Redis Stream consumption and production through 
 - 🚀 **Native Quarkus Integration** - Built specifically for Quarkus with native compilation support
 - 📡 **Consumer Groups** - Scalable message consumption with Redis consumer groups
 - 🎯 **Event Filtering** - Process only specific event types with comma-separated filters
+- 🔍 **Header-Based Filtering** - Filter messages by header key-value pairs for precise message routing
+- 🌐 **Global Header Filters** - Configure service-wide header filters via application properties
 - 🔄 **Auto-Acknowledgment** - Configurable automatic message acknowledgment
 - 🏗️ **Builder Pattern** - EventData model with fluent builder API
 - 🆕 **Stream Auto-Creation** - Automatically create Redis streams if they don't exist
@@ -77,6 +79,9 @@ camel.component.redis-stream.auto-create-groups=true
 camel.component.redis-stream.default-block-timeout=5000
 camel.component.redis-stream.max-messages=10
 camel.component.redis-stream.auto-ack=true
+
+# Global header filters (optional) - applies to all consumers
+camel.component.redis-stream.global-header-filters=environment=production,datacenter=us-east-1
 ```
 
 ### URI Format
@@ -101,6 +106,7 @@ redis-stream://streamKeyName?group=groupName&events=event1,event2[&options]
 | `payloadType` | enum | ❌ | STRING | Expected payload type (STRING, MAP, OBJECT) |
 | `objectClass` | String | ❌ | - | Target class for OBJECT payload type |
 | `serviceName` | String | ❌ | - | Service name for produced messages |
+| `headerFilters` | String | ❌ | - | Comma-separated header filters (key1=value1,key2=value2) |
 
 ## Usage Examples
 
@@ -172,6 +178,61 @@ from("redis-stream://payment-events?" +
         String messageId = exchange.getIn().getHeader("RedisStreamId", String.class);
         // Acknowledge manually if processing was successful
     });
+```
+
+### Consumer with Header Filtering
+
+```java
+// Only process OrderCreated events with region=US and priority=high headers
+from("redis-stream://order-events?" +
+     "group=regional-processor&" +
+     "events=OrderCreated&" +
+     "headerFilters=region=US,priority=high")
+    .log("Processing high priority US order: ${body.aggregateId}")
+    .to("bean:orderService?method=processHighPriorityUSOrder");
+
+// Multiple consumers with different header filters
+from("redis-stream://order-events?" +
+     "group=eu-processor&" +
+     "events=OrderCreated&" +
+     "headerFilters=region=EU")
+    .to("bean:euOrderService?method=processOrder");
+
+from("redis-stream://order-events?" +
+     "group=expedited-processor&" +
+     "events=OrderCreated,OrderUpdated&" +
+     "headerFilters=shippingType=expedited")
+    .to("bean:expeditedService?method=handleExpeditedOrder");
+```
+
+### Global vs Route-Level Header Filtering
+
+Header filters can be configured at two levels:
+
+1. **Global Level** - Applied to all consumers via application properties
+2. **Route Level** - Specified in the URI parameters
+
+When both are present, they are merged with route-level filters taking precedence:
+
+```properties
+# Global configuration - applies to all consumers
+camel.component.redis-stream.global-header-filters=environment=production,region=US
+```
+
+```java
+// Route 1: Inherits global filters (environment=production,region=US)
+from("redis-stream://events?group=service1&events=UserCreated")
+    .to("bean:service1");
+
+// Route 2: Overrides region filter, keeps environment filter
+from("redis-stream://events?group=service2&events=UserCreated&headerFilters=region=EU")
+    .to("bean:service2");
+// Effective filters: environment=production,region=EU
+
+// Route 3: Adds additional filter to global ones
+from("redis-stream://events?group=service3&events=UserCreated&headerFilters=priority=high")
+    .to("bean:service3");
+// Effective filters: environment=production,region=US,priority=high
 ```
 
 ## EventData Model

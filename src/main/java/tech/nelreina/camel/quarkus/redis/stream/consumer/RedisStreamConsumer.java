@@ -23,6 +23,7 @@ import tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamEndpoint;
 import tech.nelreina.camel.quarkus.redis.stream.exception.RedisStreamException;
 import tech.nelreina.camel.quarkus.redis.stream.model.EventData;
 import tech.nelreina.camel.quarkus.redis.stream.util.ConsumerNameGenerator;
+import tech.nelreina.camel.quarkus.redis.stream.util.HeaderFilter;
 
 public class RedisStreamConsumer extends ScheduledPollConsumer {
 
@@ -31,6 +32,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
     private RedisCommands<String, String> redisCommands;
     private String consumerName;
     private Set<String> allowedEvents;
+    private HeaderFilter headerFilter;
 
     public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
@@ -51,10 +53,18 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
         this.consumerName = generateConsumerName();
         this.allowedEvents = parseAllowedEvents();
         
+        // Create header filter with merged global and route filters
+        this.headerFilter = new HeaderFilter(
+            configuration.getGlobalHeaderFilters(), 
+            configuration.getHeaderFilters()
+        );
+        
         ensureConsumerGroupAndStream();
         
-        Log.infof("Started Redis Stream consumer: group=%s, consumer=%s, stream=%s, events=%s", 
-                configuration.getGroup(), consumerName, configuration.getStreamKeyName(), configuration.getEvents());
+        Log.infof("Started Redis Stream consumer: group=%s, consumer=%s, stream=%s, events=%s, headerFilters=%s (global=%s, route=%s)", 
+                configuration.getGroup(), consumerName, configuration.getStreamKeyName(), configuration.getEvents(), 
+                HeaderFilter.mergeFilters(configuration.getGlobalHeaderFilters(), configuration.getHeaderFilters()),
+                configuration.getGlobalHeaderFilters(), configuration.getHeaderFilters());
     }
 
     @Override
@@ -74,6 +84,13 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                     // Filter events
                     if (!allowedEvents.contains(eventData.getEvent())) {
                         Log.debugf("Skipping event: %s (not in allowed events)", eventData.getEvent());
+                        acknowledgeMessage(message.getId());
+                        continue;
+                    }
+                    
+                    // Filter by headers
+                    if (!headerFilter.matches(eventData)) {
+                        Log.debugf("Skipping event: %s (headers don't match filter criteria)", eventData.getEvent());
                         acknowledgeMessage(message.getId());
                         continue;
                     }
