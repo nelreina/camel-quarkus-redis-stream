@@ -362,6 +362,6 @@ from("direct:publish-user-event")
 
 ---
 
-*Component Version: 1.0.0-SNAPSHOT*  
-*Last Updated: June 16, 2025*  
+*Component Version: 1.2.0*  
+*Last Updated: July 9, 2025*  
 *Maintainer: nelreina.tech team*

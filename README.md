@@ -1,6 +1,6 @@
 # Camel Quarkus Redis Stream Component
 
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.0.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.2.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Apache Camel component for Quarkus that provides Redis Stream integration capabilities for event-driven microservice architectures.
@@ -41,7 +41,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
