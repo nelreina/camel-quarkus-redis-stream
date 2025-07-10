@@ -109,6 +109,7 @@ public class EventData {
     private String event;           // Event type
     private Object payload;         // Event payload (String, Map, or Custom Object)
     private String serviceName;    // Originating microservice name
+    private String mimeType;        // MIME type of payload (json, xml, text, binary) - defaults to "json"
     private Map<String, Object> headers; // Additional metadata (supports JSON parsing)
 }
 ```
@@ -167,7 +168,7 @@ public class EventData {
 - Connection pooling optimization
 
 ### Message Format
-Redis Stream Entry:
+Redis Stream Entry (v1.3.0+):
 ```
 XADD mystream * 
   aggregateId "user-123"
@@ -175,11 +176,15 @@ XADD mystream *
   event "UserCreated"
   payload "{\"name\":\"John\",\"email\":\"john@example.com\"}"
   serviceName "user-service"
+  mimeType "json"
   headers "{\"correlationId\":\"abc-123\",\"priority\":\"high\",\"region\":\"US\"}"
-  customHeader "value"
 ```
 
-**Note**: The `headers` field is JSON-serialized and parsed automatically by the consumer using Jackson ObjectMapper. Additional non-standard fields are still added as individual headers for backward compatibility.
+**Important Notes**: 
+- Only these 7 standard fields are allowed in Redis Stream
+- The `headers` field is JSON-serialized and parsed automatically by the consumer using Jackson ObjectMapper
+- Non-standard fields will trigger a warning and be ignored
+- MimeType uses short names: "json" (default), "xml", "text", "binary"
 
 ## Maven Publishing Configuration
 
@@ -367,6 +372,15 @@ from("direct:publish-user-event")
 
 ## Version History
 
+### v1.3.0 (July 10, 2025)
+- **BREAKING**: Headers are now always JSON-serialized in the "headers" field
+- **BREAKING**: Added mimeType as a standard field (no longer in headers)
+- Added field validation to ensure only standard fields in Redis Stream
+- Non-standard fields are logged as warnings and ignored
+- MimeType defaults to "json" and uses short names (json, xml, text, binary)
+- Improved error handling for malformed headers
+- Enhanced data consistency and structure
+
 ### v1.2.1 (July 9, 2025)
 - Enhanced header parsing to support JSON-serialized headers
 - Added Jackson ObjectMapper for reliable JSON parsing
@@ -387,6 +401,6 @@ from("direct:publish-user-event")
 
 ---
 
-*Component Version: 1.2.1*  
-*Last Updated: July 9, 2025*  
+*Component Version: 1.3.0*  
+*Last Updated: July 10, 2025*  
 *Maintainer: nelreina.tech team*

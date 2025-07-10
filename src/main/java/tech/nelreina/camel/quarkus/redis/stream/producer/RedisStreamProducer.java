@@ -80,10 +80,19 @@ public class RedisStreamProducer extends DefaultProducer {
             throw new IllegalArgumentException("'event' header is required when not sending EventData object");
         }
         
+        // Determine mimeType based on body
+        String mimeType = "json"; // default
+        if (body instanceof String) {
+            mimeType = "text";
+        } else if (body instanceof byte[]) {
+            mimeType = "binary";
+        }
+        
         builder.event(event)
                .aggregateId(aggregateId)
                .serviceName(serviceName != null ? serviceName : configuration.getServiceName())
                .payload(body)
+               .mimeType(mimeType)
                .timestamp(Instant.now());
         
         // Add remaining headers as custom headers
@@ -99,7 +108,9 @@ public class RedisStreamProducer extends DefaultProducer {
                "aggregateId".equals(headerName) || 
                "serviceName".equals(headerName) ||
                "timestamp".equals(headerName) ||
-               "payload".equals(headerName);
+               "payload".equals(headerName) ||
+               "mimeType".equals(headerName) ||
+               "headers".equals(headerName);
     }
 
     private void publishEventData(EventData eventData) {
@@ -137,25 +148,27 @@ public class RedisStreamProducer extends DefaultProducer {
         if (eventData.getPayload() != null) {
             String payloadStr = serializePayload(eventData.getPayload());
             message.put("payload", payloadStr);
-            
-            // Add MIME type information
-            if (eventData.getPayload() instanceof String) {
-                message.put("mimeType", "text/plain");
-            } else {
-                message.put("mimeType", "application/json");
-            }
         }
         
-        // Custom headers
+        // MimeType - add as standard field (defaults to "json" in EventData)
+        message.put("mimeType", eventData.getMimeType());
+        
+        // Headers - always serialize as JSON
+        Map<String, Object> allHeaders = new HashMap<>();
+        
+        // Add existing headers if any
         if (eventData.getHeaders() != null) {
-            eventData.getHeaders().entrySet().stream()
-                    .filter(entry -> entry.getValue() != null)
-                    .forEach(entry -> {
-                        String value = entry.getValue() instanceof String ? 
-                                      (String) entry.getValue() : 
-                                      entry.getValue().toString();
-                        message.put(entry.getKey(), value);
-                    });
+            allHeaders.putAll(eventData.getHeaders());
+        }
+        
+        // Always add headers field (even if empty)
+        try {
+            String headersJson = objectMapper.writeValueAsString(allHeaders);
+            message.put("headers", headersJson);
+        } catch (Exception e) {
+            Log.warn("Failed to serialize headers as JSON", e);
+            // Fallback to empty headers
+            message.put("headers", "{}");
         }
         
         return message;
@@ -175,7 +188,7 @@ public class RedisStreamProducer extends DefaultProducer {
     }
 
     public void produceMessage(String event, String aggregateId, String payload) {
-        produceMessage(event, aggregateId, payload, "application/json");
+        produceMessage(event, aggregateId, payload, "json");
     }
 
     public void produceMessage(String event, String aggregateId, String payload, String mimeType) {
@@ -184,8 +197,8 @@ public class RedisStreamProducer extends DefaultProducer {
                 .aggregateId(aggregateId)
                 .payload(payload)
                 .serviceName(configuration.getServiceName())
+                .mimeType(mimeType)
                 .timestamp(Instant.now())
-                .header("mimeType", mimeType)
                 .build();
         
         publishEventData(eventData);

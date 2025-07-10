@@ -11,6 +11,7 @@ public class EventData {
     private String event;
     private Object payload;
     private String serviceName;
+    private String mimeType;
     private Map<String, Object> headers;
 
     public EventData() {
@@ -24,6 +25,7 @@ public class EventData {
         this.event = builder.event;
         this.payload = builder.payload;
         this.serviceName = builder.serviceName;
+        this.mimeType = builder.mimeType;
         this.headers = builder.headers != null ? new HashMap<>(builder.headers) : new HashMap<>();
     }
 
@@ -38,6 +40,7 @@ public class EventData {
         private String event;
         private Object payload;
         private String serviceName;
+        private String mimeType;
         private Map<String, Object> headers;
 
         public Builder keyId(String keyId) {
@@ -70,6 +73,11 @@ public class EventData {
             return this;
         }
 
+        public Builder mimeType(String mimeType) {
+            this.mimeType = mimeType;
+            return this;
+        }
+
         public Builder headers(Map<String, Object> headers) {
             this.headers = headers;
             return this;
@@ -86,6 +94,9 @@ public class EventData {
         public EventData build() {
             if (timestamp == null) {
                 timestamp = Instant.now();
+            }
+            if (mimeType == null) {
+                mimeType = "json";
             }
             return new EventData(this);
         }
@@ -139,6 +150,14 @@ public class EventData {
         this.serviceName = serviceName;
     }
 
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+
     public Map<String, Object> getHeaders() {
         return headers;
     }
@@ -167,6 +186,7 @@ public class EventData {
                 ", event='" + event + '\'' +
                 ", payload=" + payload +
                 ", serviceName='" + serviceName + '\'' +
+                ", mimeType='" + mimeType + '\'' +
                 ", headers=" + headers +
                 '}';
     }

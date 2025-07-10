@@ -200,7 +200,8 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                 .aggregateId(fields.get("aggregateId"))
                 .event(fields.get("event"))
                 .payload(fields.get("payload"))
-                .serviceName(fields.get("serviceName"));
+                .serviceName(fields.get("serviceName"))
+                .mimeType(fields.get("mimeType"));
         
         // Parse timestamp
         String timestampStr = fields.get("timestamp");
@@ -219,15 +220,27 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
         }
 
         // Add headers
-        Map<String, Object> headers = objectMapper.readValue(fields.get("headers"), Map.class);
-        if(headers != null) {
-            builder.headers(headers);
+        String headersJson = fields.get("headers");
+        if (headersJson != null && !headersJson.isEmpty()) {
+            try {
+                Map<String, Object> headers = objectMapper.readValue(headersJson, Map.class);
+                if (headers != null) {
+                    builder.headers(headers);
+                }
+            } catch (Exception e) {
+                Log.warnf("Failed to parse headers JSON: %s", headersJson);
+            }
         }
         
-        // Add all other fields as headers
-        fields.entrySet().stream()
-                .filter(entry -> !isStandardField(entry.getKey()))
-                .forEach(entry -> builder.header(entry.getKey(), entry.getValue()));
+        // Check for non-standard fields and warn
+        List<String> nonStandardFields = fields.keySet().stream()
+                .filter(key -> !isStandardField(key))
+                .collect(Collectors.toList());
+        
+        if (!nonStandardFields.isEmpty()) {
+            Log.warnf("Found non-standard fields in Redis Stream message: %s. These fields will be ignored.", 
+                     nonStandardFields);
+        }
         
         return builder.build();
     }
@@ -238,6 +251,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                "payload".equals(fieldName) || 
                "serviceName".equals(fieldName) || 
                "timestamp".equals(fieldName) ||
+               "mimeType".equals(fieldName) ||
                "headers".equals(fieldName);
     }
 
