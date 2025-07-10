@@ -1,6 +1,6 @@
 # Camel Quarkus Redis Stream Component
 
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.2.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.2.1-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Apache Camel component for Quarkus that provides Redis Stream integration capabilities for event-driven microservice architectures.
@@ -41,7 +41,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 </dependency>
 ```
 
@@ -272,9 +272,10 @@ XADD order-events *
   event "OrderCreated"
   payload "{\"orderId\":\"order-123\",\"amount\":99.99}"
   serviceName "order-service"
-  mimeType "application/json"
-  correlationId "abc-def-123"
+  headers "{\"correlationId\":\"abc-def-123\",\"mimeType\":\"application/json\",\"region\":\"US\"}"
 ```
+
+**Note**: Starting from v1.2.1, the `headers` field is JSON-serialized for better structure and reliability. The consumer automatically deserializes this field using Jackson ObjectMapper.
 
 ## Consumer Groups and Scaling
 

@@ -109,7 +109,7 @@ public class EventData {
     private String event;           // Event type
     private Object payload;         // Event payload (String, Map, or Custom Object)
     private String serviceName;    // Originating microservice name
-    private Map<String, Object> headers; // Additional metadata
+    private Map<String, Object> headers; // Additional metadata (supports JSON parsing)
 }
 ```
 
@@ -157,6 +157,8 @@ public class EventData {
 - Support for manual and auto-acknowledgment
 - Dead letter handling for processing failures
 - Graceful shutdown with message completion
+- Jackson ObjectMapper for JSON header deserialization
+- Backward compatibility for non-JSON header fields
 
 ### Producer Implementation  
 - Batch message support for performance
@@ -173,8 +175,11 @@ XADD mystream *
   event "UserCreated"
   payload "{\"name\":\"John\",\"email\":\"john@example.com\"}"
   serviceName "user-service"
+  headers "{\"correlationId\":\"abc-123\",\"priority\":\"high\",\"region\":\"US\"}"
   customHeader "value"
 ```
+
+**Note**: The `headers` field is JSON-serialized and parsed automatically by the consumer using Jackson ObjectMapper. Additional non-standard fields are still added as individual headers for backward compatibility.
 
 ## Maven Publishing Configuration
 
@@ -360,8 +365,28 @@ from("direct:publish-user-event")
 - Update documentation
 - Sign commits for security
 
+## Version History
+
+### v1.2.1 (July 9, 2025)
+- Enhanced header parsing to support JSON-serialized headers
+- Added Jackson ObjectMapper for reliable JSON parsing
+- Improved backward compatibility for non-standard fields
+- Fixed header deserialization issues
+
+### v1.2.0 (July 9, 2025)
+- Added header-based event filtering
+- Added global header filters configurable via application properties
+- Implemented filter merging logic (route overrides global)
+- Enhanced logging to show effective filters
+
+### v1.0.1
+- Initial release with core functionality
+- Redis Stream consumer/producer support
+- Event filtering by event type
+- Consumer group management
+
 ---
 
-*Component Version: 1.2.0*  
+*Component Version: 1.2.1*  
 *Last Updated: July 9, 2025*  
 *Maintainer: nelreina.tech team*
