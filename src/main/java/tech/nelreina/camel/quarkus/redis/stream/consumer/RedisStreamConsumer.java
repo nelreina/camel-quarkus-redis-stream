@@ -214,7 +214,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                     builder.timestamp(Instant.ofEpochMilli(Long.parseLong(timestampStr)));
                 }
             } catch (Exception e) {
-                Log.warnf("Failed to parse timestamp: %s, using current time", timestampStr);
+                Log.debugf("Failed to parse timestamp: %s, using current time", timestampStr);
                 builder.timestamp(Instant.now());
             }
         }
