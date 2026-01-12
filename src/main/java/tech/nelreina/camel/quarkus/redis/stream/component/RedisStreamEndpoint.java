@@ -33,7 +33,7 @@ public class RedisStreamEndpoint extends ScheduledPollEndpoint {
 
     @Override
     public Producer createProducer() throws Exception {
-        return new RedisStreamProducer(this);
+        return new RedisStreamProducer(this, this.configuration.getRedisEncryptor());
     }
 
     @Override
@@ -41,7 +41,7 @@ public class RedisStreamEndpoint extends ScheduledPollEndpoint {
         // Validate consumer-specific requirements
         validateConsumerConfiguration();
         
-        RedisStreamConsumer consumer = new RedisStreamConsumer(this, processor);
+        RedisStreamConsumer consumer = new RedisStreamConsumer(this, processor, configuration.getRedisEncryptor());
         configureConsumer(consumer);
         return consumer;
     }

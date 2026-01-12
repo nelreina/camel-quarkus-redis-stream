@@ -10,6 +10,7 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.quarkus.logging.Log;
+import tech.nelreina.camel.quarkus.redis.stream.encryption.RedisEncryptor;
 
 @Component("redis-stream")
 public class RedisStreamComponent extends DefaultComponent {
@@ -32,6 +33,10 @@ public class RedisStreamComponent extends DefaultComponent {
     private boolean autoAck = true;
     private int pollingInterval = 100;
     private String globalHeaderFilters = "";
+    private String encryptionKey = "";
+    private String encryptionIv = "";
+    private boolean encryptionEnabled = true;
+
 
     private StatefulRedisConnection<String, String> connection;
 
@@ -50,6 +55,7 @@ public class RedisStreamComponent extends DefaultComponent {
         configuration.setMaxMessages(maxMessages);
         configuration.setAutoAck(autoAck);
         configuration.setPollingInterval(pollingInterval);
+        configuration.setRedisEncryptor(new RedisEncryptor(encryptionKey, encryptionIv, encryptionEnabled));
         
         // Always set global header filters - they will be merged with route-level filters
         configuration.setGlobalHeaderFilters(globalHeaderFilters);
@@ -198,5 +204,29 @@ public class RedisStreamComponent extends DefaultComponent {
 
     public void setGlobalHeaderFilters(String globalHeaderFilters) {
         this.globalHeaderFilters = globalHeaderFilters;
+    }
+
+    public String getEncryptionKey() {
+        return encryptionKey;
+    }
+
+    public void setEncryptionKey(String encryptionKey) {
+        this.encryptionKey = encryptionKey;
+    }
+
+    public String getEncryptionIv() {
+        return encryptionIv;
+    }
+
+    public void setEncryptionIv(String encryptionIv) {
+        this.encryptionIv = encryptionIv;
+    }
+
+    public boolean isEncryptionEnabled() {
+        return encryptionEnabled;
+    }
+
+    public void setEncryptionEnabled(boolean encryptionEnabled) {
+        this.encryptionEnabled = encryptionEnabled;
     }
 }

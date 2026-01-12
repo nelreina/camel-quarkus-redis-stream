@@ -15,6 +15,7 @@ import io.lettuce.core.api.sync.RedisCommands;
 import io.quarkus.logging.Log;
 import tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamConfiguration;
 import tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamEndpoint;
+import tech.nelreina.camel.quarkus.redis.stream.encryption.RedisEncryptor;
 import tech.nelreina.camel.quarkus.redis.stream.exception.RedisStreamException;
 import tech.nelreina.camel.quarkus.redis.stream.model.EventData;
 
@@ -22,12 +23,14 @@ public class RedisStreamProducer extends DefaultProducer {
 
     private final RedisStreamEndpoint endpoint;
     private final RedisStreamConfiguration configuration;
+    private final RedisEncryptor redisEncryptor;
     private RedisCommands<String, String> redisCommands;
     private final ObjectMapper objectMapper;
 
-    public RedisStreamProducer(RedisStreamEndpoint endpoint) {
+    public RedisStreamProducer(RedisStreamEndpoint endpoint, RedisEncryptor redisEncryptor) {
         super(endpoint);
         this.endpoint = endpoint;
+        this.redisEncryptor = redisEncryptor;
         this.configuration = endpoint.getConfiguration();
         this.objectMapper = new ObjectMapper();
     }
@@ -146,7 +149,7 @@ public class RedisStreamProducer extends DefaultProducer {
         
         // Payload - serialize to JSON if it's an object
         if (eventData.getPayload() != null) {
-            String payloadStr = serializePayload(eventData.getPayload());
+            String payloadStr = redisEncryptor.encrypt(serializePayload(eventData.getPayload()));
             message.put("payload", payloadStr);
         }
         

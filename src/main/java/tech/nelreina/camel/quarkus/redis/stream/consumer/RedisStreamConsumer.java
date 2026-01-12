@@ -21,6 +21,7 @@ import io.lettuce.core.api.sync.RedisCommands;
 import io.quarkus.logging.Log;
 import tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamConfiguration;
 import tech.nelreina.camel.quarkus.redis.stream.component.RedisStreamEndpoint;
+import tech.nelreina.camel.quarkus.redis.stream.encryption.RedisEncryptor;
 import tech.nelreina.camel.quarkus.redis.stream.exception.RedisStreamException;
 import tech.nelreina.camel.quarkus.redis.stream.model.EventData;
 import tech.nelreina.camel.quarkus.redis.stream.util.ConsumerNameGenerator;
@@ -30,22 +31,26 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
 
     private final RedisStreamEndpoint endpoint;
     private final RedisStreamConfiguration configuration;
+    private final RedisEncryptor redisEncryptor;
     private RedisCommands<String, String> redisCommands;
     private String consumerName;
     private Set<String> allowedEvents;
     private HeaderFilter headerFilter;
     private ObjectMapper objectMapper;
 
-    public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor) {
+    public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor, RedisEncryptor redisEncryptor) {
         super(endpoint, processor);
         this.endpoint = endpoint;
+        this.redisEncryptor = redisEncryptor;
         this.configuration = endpoint.getConfiguration();
         this.objectMapper = new ObjectMapper();
     }
 
-    public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor, ObjectMapper objectMapper) {
+    public RedisStreamConsumer(RedisStreamEndpoint endpoint, Processor processor, ObjectMapper objectMapper,
+                               RedisEncryptor redisEncryptor) {
         super(endpoint, processor);
         this.endpoint = endpoint;
+        this.redisEncryptor = redisEncryptor;
         this.configuration = endpoint.getConfiguration();
         this.objectMapper = objectMapper;
     }
@@ -199,7 +204,7 @@ public class RedisStreamConsumer extends ScheduledPollConsumer {
                 .keyId(message.getId())
                 .aggregateId(fields.get("aggregateId"))
                 .event(fields.get("event"))
-                .payload(fields.get("payload"))
+                .payload(redisEncryptor.decrypt(fields.get("payload")))
                 .serviceName(fields.get("serviceName"))
                 .mimeType(fields.get("mimeType"));
         

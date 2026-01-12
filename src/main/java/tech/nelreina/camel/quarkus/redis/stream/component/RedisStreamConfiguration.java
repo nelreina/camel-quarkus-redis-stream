@@ -3,6 +3,7 @@ package tech.nelreina.camel.quarkus.redis.stream.component;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriParams;
 import org.apache.camel.spi.UriPath;
+import tech.nelreina.camel.quarkus.redis.stream.encryption.RedisEncryptor;
 
 @UriParams
 public class RedisStreamConfiguration {
@@ -55,7 +56,8 @@ public class RedisStreamConfiguration {
 
     @UriParam(description = "Comma-separated list of header filters in format key1=value1,key2=value2")
     private String headerFilters;
-    
+
+    private RedisEncryptor redisEncryptor;
     // Global filters from component configuration (not a URI param)
     private String globalHeaderFilters;
 
@@ -197,5 +199,13 @@ public class RedisStreamConfiguration {
 
     public void setGlobalHeaderFilters(String globalHeaderFilters) {
         this.globalHeaderFilters = globalHeaderFilters;
+    }
+
+    public RedisEncryptor getRedisEncryptor() {
+        return redisEncryptor;
+    }
+
+    public void setRedisEncryptor(RedisEncryptor redisEncryptor) {
+        this.redisEncryptor = redisEncryptor;
     }
 }

@@ -82,6 +82,12 @@ camel.component.redis-stream.auto-ack=true
 
 # Global header filters (optional) - applies to all consumers
 camel.component.redis-stream.global-header-filters=environment=production,datacenter=us-east-1
+
+# Encryption (Enabled by default)
+camel.component.redis-stream.encryption-enabled=false
+# When encryption is enabled, key and iv must be specified. key must be a 32 byte string and iv must be a 16 byte string.
+camel.component.redis-stream.encryption-key=vL9eA3rTqX5mZ8pKc2WbN7gYd4JhR6uQ
+camel.component.redis-stream.encryption-iv=aB3dE6gH9jK1LmNp
 ```
 
 ### URI Format
