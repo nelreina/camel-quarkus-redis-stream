@@ -175,6 +175,23 @@ public class ConfigEventsTailer implements AutoCloseable {
             timers.shutdownNow();
             timers = null;
         }
+        if (thread != null) {
+            long deadline = System.currentTimeMillis() + blockMs + 2000;
+            try {
+                // repeat the UNBLOCK: a stop right after start can race the loop into its XREAD BLOCK
+                do {
+                    unblock();
+                    thread.join(control == null ? Math.max(1, deadline - System.currentTimeMillis()) : 100);
+                } while (thread.isAlive() && System.currentTimeMillis() < deadline);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            thread = null;
+        }
+        closeConnection();
+    }
+
+    private void unblock() {
         if (control != null && clientId != null) {
             try {
                 control.clientUnblock(clientId, UnblockType.TIMEOUT);
@@ -182,15 +199,6 @@ public class ConfigEventsTailer implements AutoCloseable {
                 Log.debugf("CLIENT UNBLOCK failed: %s", e.getMessage());
             }
         }
-        if (thread != null) {
-            try {
-                thread.join(blockMs + 2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            thread = null;
-        }
-        closeConnection();
     }
 
     @Override
