@@ -1,6 +1,6 @@
 # Camel Quarkus Redis Stream Component
 
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.3.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.4.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Apache Camel component for Quarkus that provides Redis Stream integration capabilities for event-driven microservice architectures.
@@ -21,6 +21,10 @@ This component enables seamless Redis Stream consumption and production through 
 - 🆕 **Stream Auto-Creation** - Automatically create Redis streams if they don't exist
 - ⚡ **High Performance** - Non-blocking I/O with Lettuce Redis client
 - 🔧 **Flexible Configuration** - URI parameters and application properties support
+- 📍 **Group start at an activation id** - `XGROUP CREATE … MKSTREAM` at `groupStartId` (1.4.0)
+- ♻️ **PEL recovery** - bounded drain of the consumer's own pending entries, periodic `XAUTOCLAIM`, parking of poison entries (1.4.0)
+- 🏷️ **Stable consumer names** - `ConsumerSlot`: `<service>-<n>` per pod via a fenced Redis lease (1.4.0)
+- 🔁 **Hot tenant routes** - `TenantRouteManager` adds/removes per-tenant routes from the config snapshot, woken by the control stream (1.4.0)
 
 ## Installation
 
@@ -41,7 +45,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -82,6 +86,13 @@ camel.component.redis-stream.auto-ack=true
 
 # Global header filters (optional) - applies to all consumers
 camel.component.redis-stream.global-header-filters=environment=production,datacenter=us-east-1
+
+# 1.4.0 component defaults (optional; URI parameters override them)
+camel.component.redis-stream.group-start-id=$
+camel.component.redis-stream.auto-claim-min-idle-ms=60000
+camel.component.redis-stream.auto-claim-every-ms=60000
+camel.component.redis-stream.drain-max-deliveries=5
+camel.component.redis-stream.stop-timeout-ms=30000
 ```
 
 ### URI Format
@@ -96,9 +107,19 @@ redis-stream://streamKeyName?group=groupName&events=event1,event2[&options]
 |-----------|------|----------|---------|-------------|
 | `group` | String | ✅ | - | Consumer group name |
 | `events` | String | ✅ | - | Comma-separated list of event types to filter |
-| `consumerName` | String | ❌ | auto-generated | Consumer name within the group |
-| `maxMessages` | int | ❌ | 10 | Maximum messages per poll |
-| `blockTimeout` | int | ❌ | 1000 | Block timeout in milliseconds |
+| `consumerName` | String | ❌ | supplier / auto-generated | Consumer name within the group. When unset: the component-level `ConsumerNameSupplier` (e.g. `ConsumerSlot`), else `{group}-{hostname}-{n}` |
+| `maxMessages` | int | ❌ | 10 | Maximum messages per poll (`XREADGROUP COUNT`) |
+| `blockTimeout` | int | ❌ | 1000 | Not used for reads: all routes share one connection, so reads are non-blocking |
+| `groupStartId` | String | ❌ | `$` | Id the group is created at (`XGROUP CREATE … MKSTREAM`); `0` = whole stream, `<ms>-0` = activation point |
+| `drainEnabled` | boolean | ❌ | true | Drain this consumer's own PEL (moving cursor, bounded by the XPENDING count) on the first poll |
+| `drainBatch` | int | ❌ | 50 | COUNT per drain read |
+| `drainMaxDeliveries` | int | ❌ | 5 | Entries delivered more than this, or failing on that last delivery, are parked; `0` disables parking |
+| `parkedStream` | String | ❌ | `ynohub:parked:<group>` | Stream receiving parked entries (`MAXLEN ~ 10000`) |
+| `autoClaimMinIdleMs` | long | ❌ | 60000 | `XAUTOCLAIM` min idle time |
+| `autoClaimEveryMs` | long | ❌ | 60000 | Interval of the `XAUTOCLAIM` pass (also runs on the first poll); `0` disables the periodic pass |
+| `autoClaimCount` | int | ❌ | 100 | COUNT per `XAUTOCLAIM` call |
+| `deleteIdleConsumersMs` | long | ❌ | 3600000 | During the `XAUTOCLAIM` pass, `XGROUP DELCONSUMER` other consumers with an empty PEL idle longer than this; `0` disables |
+| `stopTimeoutMs` | long | ❌ | 30000 | How long a stop waits for the in-flight poll |
 | `pollingInterval` | int | ❌ | 100 | Polling interval in milliseconds |
 | `autoAck` | boolean | ❌ | true | Auto-acknowledge messages |
 | `autoCreateStreams` | boolean | ❌ | true | Auto-create Redis streams if they don't exist |
@@ -290,7 +311,80 @@ from("redis-stream://events?group=analytics-service&events=UserRegistered")
     .to("bean:analyticsService?method=trackUserSignup");
 ```
 
-Consumer names are auto-generated as: `{group}-{hostname}-{instance}` or you can specify custom names.
+Consumer name precedence: `consumerName` URI parameter → component-level `ConsumerNameSupplier` →
+generated `{group}-{hostname}-{instance}` (one new name per route and per restart).
+
+### Stable consumer names: `ConsumerSlot` (1.4.0)
+
+`ConsumerSlot` gives every pod one bounded, restart-stable name `<service>-<n>` shared by all its routes:
+
+- claim: lowest `n` with `SET ynohub:config:consumer-slot:<svc>:<n> <HOSTNAME> NX PX 30000`
+- renew every 10 s with a fenced Lua script (`PEXPIRE` only while the value is still this pod)
+- lease lapsed → `SET NX` on the same slot; taken by another pod → every supplier-named consumer stops,
+  a new slot is claimed, the consumers restart under the new name; no free slot → `Quarkus.asyncExit(1)`
+- env `CONSUMER_NAME` wins over the lease; the component releases the slot (fenced `DEL`) on shutdown after its routes stopped
+
+Enable the bundled CDI producer at build time:
+
+```properties
+redis-stream.consumer-slot.enabled=true
+# default: env SERVICE_NAME
+redis-stream.consumer-slot.service-name=yno-swift-mt-parser
+```
+
+or bind your own `ConsumerNameSupplier` bean / call `component.setConsumerNameSupplier(...)`. Do not put
+`consumerName=` on the URIs then: supplier-named consumers are the ones restarted on a slot change.
+
+## Start sequence, failures and parking (1.4.0)
+
+1. `XGROUP CREATE <stream> <group> <groupStartId> MKSTREAM` (BUSYGROUP ignored; no dummy `XADD`/`XDEL`).
+2. First poll: drain the consumer's own PEL with a moving cursor (`XREADGROUP … STREAMS key <lastId>` from `0`),
+   bounded by its XPENDING count.
+3. `XAUTOCLAIM` entries idle ≥ `autoClaimMinIdleMs` (orphans of a crashed pod and this consumer's own failed
+   entries); repeated every `autoClaimEveryMs` on the same non-blocking connection.
+4. Then `XREADGROUP COUNT maxMessages … >`.
+
+A message whose processing throws stays pending and is retried by `XAUTOCLAIM`. On its `drainMaxDeliveries`-th
+delivery a failure parks it: `XADD <parkedStream> MAXLEN ~ 10000` with the original fields plus
+`streamKey, group, consumer, entryId, deliveries, reason`, then `XACK`. A pending entry that was deleted from
+the stream is acked. Exchanges whose exception was handled by the route's error handler count as processed
+(unchanged from 1.3.x).
+
+Stop (route stop, `stopRoute`, shutdown) no longer interrupts a poll: no new polls start, the in-flight message
+finishes and is acked, remaining entries of that batch stay in the consumer's PEL for the next start.
+
+**Behaviour changes vs 1.3.x**: new groups start at `$` (was `0-0`: replayed the whole stream); set
+`groupStartId=0` to keep the old behaviour. `maxMessages` is now applied. Failing entries are retried and
+eventually parked instead of staying pending forever. Exchange headers `RedisStreamConsumer` and
+`RedisStreamDeliveries` are added.
+
+## Hot tenant routes: `TenantRouteManager` (1.4.0)
+
+Package `tech.nelreina.camel.quarkus.redis.stream.tenant`. The config snapshot in Redis is the truth; the
+control stream `ynohub:config:events` only wakes the reconcile.
+
+```java
+TenantRouteSpec spec = new TenantRouteSpec(
+        bic -> new BankRoutes(bic),               // RouteBuilder per tenant; define the redis-stream route last
+        bic -> protocolsJson(bic))                // fingerprint: changed → routes rebuilt
+    .stream(bic -> "ynohub:events:" + bic, "yno-swift-mt-parser") // group created at tenant-activated:<bic>
+    .onTenantAdded(bic -> openTenantDb(bic))      // throws → tenant degraded, retried 1 s … 60 s
+    .onTenantRemoved(bic -> closeTenantDb(bic));
+
+TenantRouteManager manager = TenantRouteManager.builder(camelContext, spec)
+    .serviceName("yno-swift-mt-parser")           // default env SERVICE_NAME
+    .build();
+camelContext.addService(manager, true, true);    // or manager.start() / manager.stop()
+```
+
+- start: consumer name (slot) → `XREVRANGE events + - COUNT 1` → `reconcile("boot")` → `ConfigEventsTailer`
+  (own connection, `XREAD BLOCK 5000`), backstop reconcile every `CONFIG_RECONCILE_SEC` (60), heartbeat every 30 s.
+- reconcile: `MGET cache:status cache:generation host-banks:active`; empty list → WARN, nothing evicted; added →
+  ensure group at `tenant-activated:<bic>` (else `$`) → `onTenantAdded` → `addRoutes`; removed → redis-stream
+  routes stopped first → `removeRoute` → `onTenantRemoved` (group and PEL kept); generation lower than seen → full reconcile.
+- heartbeat: `HSET ynohub:config:applied:<svc>:<consumerName> {generation, tenants, degraded, hotReload, consumerName, ts}` `EX 120`.
+- `tenants()`, `liveStreams()`, `status()` (for `/health-check`), `reconcile(reason)`, `requestReconcile(reason)`, `stopAll()`.
+- `RedisStreamComponent.getRedisClient()` opens dedicated connections; the shared one must never block.
 
 ## Error Handling
 
@@ -303,6 +397,12 @@ from("redis-stream://orders?group=fulfillment&events=OrderCreated")
     .end()
     .to("bean:fulfillmentService?method=processOrder");
 ```
+
+## Tests of this repository
+
+`mvn test` runs the integration tests against a real Redis: `-Dredis.test.url=redis://host:port`
+(default `redis://localhost:6379`); they are skipped when Redis is unreachable. Keys live under a random
+`test:<id>:` prefix and are removed afterwards.
 
 ## Testing with TestContainers
 
@@ -373,6 +473,9 @@ mvn package -Pnative
 | camel-quarkus-redis-stream | Quarkus | Camel-Quarkus | Java |
 |---------------------------|---------|---------------|------|
 | 1.0.x                     | 3.12.x  | 3.2.x         | 17+  |
+| 1.4.x                     | 3.12.x  | 3.2.x         | 17+  |
+
+Redis ≥ 6.2 (XAUTOCLAIM, XGROUP CREATE … MKSTREAM).
 
 ## Contributing
 
