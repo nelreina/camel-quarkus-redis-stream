@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.camel.Endpoint;
+import org.apache.camel.Service;
 import org.apache.camel.spi.annotations.Component;
 import org.apache.camel.support.DefaultComponent;
 
@@ -52,6 +53,7 @@ public class RedisStreamComponent extends DefaultComponent {
     private volatile ConsumerNameSupplier consumerNameSupplier;
     private volatile boolean consumerNameSupplierResolved;
     private final Set<RedisStreamConsumer> supplierNamedConsumers = ConcurrentHashMap.newKeySet();
+    private final Set<Service> connectionUsers = ConcurrentHashMap.newKeySet();
 
     /** Stops every supplier-named consumer while the slot changes hands, restarts them under the new name. */
     private final ConsumerSlotListener restartOnSlotChange = new ConsumerSlotListener() {
@@ -227,8 +229,31 @@ public class RedisStreamComponent extends DefaultComponent {
         supplierNamedConsumers.remove(consumer);
     }
 
+    /**
+     * Services that use this component's connection (or a connection of its client) beyond the routes, e.g. the
+     * {@code TenantRouteManager}. {@link #doStop} stops them first, while the connection is still open.
+     */
+    public void registerConnectionUser(Service service) {
+        connectionUsers.add(service);
+    }
+
+    /** Counterpart of {@link #registerConnectionUser}; called by the service when it stops. */
+    public void unregisterConnectionUser(Service service) {
+        connectionUsers.remove(service);
+    }
+
     @Override
     protected void doStop() throws Exception {
+        // Camel stops the components before the services added with addService: stop the connection users
+        // first so their last writes (heartbeat DEL) reach Redis and their own connections close cleanly.
+        for (Service user : new ArrayList<>(connectionUsers)) {
+            try {
+                user.stop();
+            } catch (Exception e) {
+                Log.warnf(e, "Stopping %s before closing the Redis connection failed", user);
+            }
+        }
+        connectionUsers.clear();
         super.doStop();
         ConsumerNameSupplier supplier = consumerNameSupplier;
         if (supplier != null) {

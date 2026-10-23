@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Route;
 import org.apache.camel.RoutesBuilder;
+import org.apache.camel.support.LifecycleStrategySupport;
 import org.apache.camel.support.service.ServiceSupport;
 
 import io.lettuce.core.KeyValue;
@@ -60,6 +61,10 @@ import tech.nelreina.camel.quarkus.redis.stream.util.StreamGroups;
  *
  * <p>Add it to the CamelContext ({@code camelContext.addService(manager, true, true)}) or call
  * {@code start()} / {@code stop()} yourself; stop removes every tenant route and deletes the heartbeat key.
+ * Either way it stops itself when the context starts stopping (a {@code LifecycleStrategy} registered on the
+ * first start), i.e. before the context shuts the routes down and before the component closes its connection;
+ * the component also stops it first in its own {@code doStop} (component stopped on its own). A later
+ * {@code stop()} is a no-op.
  */
 public class TenantRouteManager extends ServiceSupport {
 
@@ -105,6 +110,7 @@ public class TenantRouteManager extends ServiceSupport {
     private volatile long lastReconcileAt;
     private volatile String lastStatus;
     private volatile String heartbeatName;
+    private volatile boolean stopOnContextStoppingRegistered;
 
     private final ConsumerSlotListener slotListener = new ConsumerSlotListener() {
         @Override
@@ -157,6 +163,8 @@ public class TenantRouteManager extends ServiceSupport {
             component = camelContext.getComponent("redis-stream", RedisStreamComponent.class);
         }
         redis = component.getConnection().sync();
+        component.registerConnectionUser(this);
+        registerStopOnContextStopping();
         reconciler = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "redis-stream-tenant-reconcile");
             t.setDaemon(true);
@@ -200,7 +208,36 @@ public class TenantRouteManager extends ServiceSupport {
 
     @Override
     protected void doStop() throws Exception {
-        stopAll();
+        try {
+            stopAll();
+        } finally {
+            if (component != null) {
+                component.unregisterConnectionUser(this);
+            }
+        }
+    }
+
+    /**
+     * Stop as soon as the context starts stopping, whatever the wiring: tenant consume routes are stopped first
+     * (in-flight message finishes and is acked) while the component's connection is still open.
+     */
+    private void registerStopOnContextStopping() {
+        if (stopOnContextStoppingRegistered) {
+            return;
+        }
+        stopOnContextStoppingRegistered = true;
+        camelContext.addLifecycleStrategy(new LifecycleStrategySupport() {
+            @Override
+            public void onContextStopping(CamelContext context) {
+                if (isStarted() || isStarting()) {
+                    try {
+                        stop();
+                    } catch (Exception e) {
+                        Log.warnf(e, "Stopping TenantRouteManager %s on context stopping failed", serviceName);
+                    }
+                }
+            }
+        });
     }
 
     /** Stops the tailer and timers, removes every tenant route (consume routes first) and the heartbeat key. */

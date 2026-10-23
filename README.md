@@ -1,6 +1,6 @@
 # Camel Quarkus Redis Stream Component
 
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.4.0-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-1.4.1-blue)](https://github.com/nelreina/camel-quarkus-redis-stream/packages)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Apache Camel component for Quarkus that provides Redis Stream integration capabilities for event-driven microservice architectures.
@@ -45,7 +45,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>tech.nelreina</groupId>
     <artifactId>camel-quarkus-redis-stream</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
 </dependency>
 ```
 
@@ -328,9 +328,14 @@ Enable the bundled CDI producer at build time:
 
 ```properties
 redis-stream.consumer-slot.enabled=true
-# default: env SERVICE_NAME
+# optional: service name of the slot keys (consumer-slot:<svc>:<n>, consumer name <svc>-<n>)
 redis-stream.consumer-slot.service-name=yno-swift-mt-parser
 ```
+
+Service name, first non-blank of: `redis-stream.consumer-slot.service-name`, config `SERVICE_NAME`
+(env, system property, `.env`), `System.getenv("SERVICE_NAME")`. None set → startup fails with
+`redis-stream.consumer-slot.enabled=true but no service name: …` (1.4.1; in 1.4.0 the `${SERVICE_NAME:}`
+default was not expanded, so the property had to be set explicitly; setting it stays valid).
 
 or bind your own `ConsumerNameSupplier` bean / call `component.setConsumerNameSupplier(...)`. Do not put
 `consumerName=` on the URIs then: supplier-named consumers are the ones restarted on a slot change.
@@ -377,6 +382,21 @@ TenantRouteManager manager = TenantRouteManager.builder(camelContext, spec)
 camelContext.addService(manager, true, true);    // or manager.start() / manager.stop()
 ```
 
+Supported wirings (1.4.1, both safe on shutdown):
+
+| Wiring | Shutdown |
+|---|---|
+| `camelContext.addService(manager, true, true)` | stopped when the context starts stopping |
+| `manager.start()` once the context is started (e.g. `CamelContextStartedEvent`, `StartupListener`) | same; an explicit `manager.stop()` later is a no-op |
+
+On its first start the manager registers a `LifecycleStrategy` that stops it in `onContextStopping`, i.e. before
+the context shuts the routes down: tailer stopped, tenant consume routes stopped first (in-flight message
+finishes and is acked), `onTenantRemoved` run, heartbeat key deleted. It also registers with the component,
+whose `doStop` stops it before closing the connection and releasing the consumer slot (component stopped on
+its own). In 1.4.0 Camel stopped an `addService` manager after the component had closed its connection
+(heartbeat `DEL` failed, tailer logged `Connection is already closed`); services that stop the manager
+themselves in `onContextStopping` / `CamelContextStoppingEvent` keep working unchanged.
+
 - start: consumer name (slot) → `XREVRANGE events + - COUNT 1` → `reconcile("boot")` → `ConfigEventsTailer`
   (own connection, `XREAD BLOCK 5000`), backstop reconcile every `CONFIG_RECONCILE_SEC` (60), heartbeat every 30 s.
 - reconcile: `MGET cache:status cache:generation host-banks:active`; empty list → WARN, nothing evicted; added →
@@ -397,6 +417,17 @@ from("redis-stream://orders?group=fulfillment&events=OrderCreated")
     .end()
     .to("bean:fulfillmentService?method=processOrder");
 ```
+
+## Logging
+
+The jar ships no `application.properties` (1.4.1; 1.4.0 shipped one that set this package to `DEBUG` at
+ordinal 250 and overrode the consuming service's log settings). Set the level in the service:
+
+```properties
+quarkus.log.category."tech.nelreina.camel.quarkus.redis.stream".level=DEBUG
+```
+
+Bean discovery uses the jar's `META-INF/jandex.idx`; no `quarkus.index-dependency` entry is needed.
 
 ## Tests of this repository
 
