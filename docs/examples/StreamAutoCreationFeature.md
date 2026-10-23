@@ -20,10 +20,12 @@ boolean streamExists = redisCommands.exists(streamKeyName) == 1;
 ```
 
 ### 2. Auto-Creation Process
-If stream doesn't exist and auto-creation is enabled:
-1. **Add dummy message** to create the stream: `XADD stream-name * _dummy true`
-2. **Remove dummy message** to leave stream empty: `XDEL stream-name message-id` 
-3. **Continue with normal consumer setup** (create consumer group, etc.)
+Since 1.4.0 the stream and the group are created in one command:
+`XGROUP CREATE stream-name group-name <groupStartId> MKSTREAM` (BUSYGROUP ignored, `groupStartId` default `$`).
+With `autoCreateStreams=false` a missing stream still fails the consumer start.
+
+Up to 1.3.x the component added and deleted a dummy entry (`XADD … _dummy true` + `XDEL`) and then created
+the group at `0-0`.
 
 ### 3. Result
 - ✅ Empty Redis Stream exists and ready for messages
